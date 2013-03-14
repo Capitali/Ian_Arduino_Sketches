@@ -1,0 +1,125 @@
+// Ian Schlueter // March 2013 //
+//
+// A sketch to control a continuous servo using 
+// 1) two buttons, one incriments a state counter for rotate/stop, the other for direction of rotation
+// 2) one analog sensor mapped to allow normal "zero to max" speed control regarless of direction
+// 3) one three wire continuous rotating servo:  stop=90 : max clockwise=180 : max anticlockwise=0
+//
+//
+
+
+#include <Servo.h>        //  load the standard arduino servo library
+
+Servo servo1;             // create servo object
+const int servo1Pin=3;    // constant servo 1 pin
+const int rotStop = 92;   // send what value to servo to stop it?
+const int ControlPin=A0;  // pin to map to control value for speed
+
+const int but1Pin=4;      // pin for button 1
+const int but2Pin=5;      // pin for button 2
+int but1Count=0;          // global: button 1 initial counter value
+int but2Count=0;          // global: button 2 counter counter value
+int lastbut1Sensor=0;     // global: last reading of the button sensor -- so we don't act except once per press
+int lastbut2Sensor=0;     // global: last reading of the button sensor -- so we don't act except once per press
+
+const int freq1 = 50;     // how often to check the buttons 50ms*20=1s or 20 times a second
+unsigned long timer1;     // Holds the next check time.
+
+
+void setup() 
+  {
+    pinMode(but1Pin, INPUT);    // buttons are inputs
+    pinMode(but2Pin, INPUT);    // buttons are inputs
+    pinMode(ControlPin, INPUT); // analog controlPin 
+    servo1.attach(servo1Pin);   // attach the servo to the servo pin
+    timer1=millis();            // using the internal clock starting..... now....
+//    Serial.begin(9600);       // serial data if needed, comment if not
+
+  }
+
+
+
+void loop() 
+{// ******** BEGIN Main Event LOOP *************
+  int rotSpeed;
+    if (millis() >= timer1)
+    {
+      timer1 += freq1;
+    }
+  butSet();
+  if (but1Count == 0)
+    servo1.write(rotStop);
+  else
+  {
+//  Serial.print("rotSpeed on Return=");   // use if you are questioning the return from getSpeed)
+//  Serial.println(getSpeed(rotSpeed));    // 
+  servo1.write(getSpeed(rotSpeed));        // write the speed from your analog input to servo1
+  }
+
+  
+}
+
+
+// ******** END Main Event LOOP *****************
+
+// ******** Begin Functions
+
+int butCheck()  //  Call this to serial print the button states, otherwise don't call it
+ {
+    Serial.print("State>");
+    Serial.print(but1Count);
+    Serial.print("<< -- BUT1 --- BUT2 -- >>");
+    Serial.print(" state >");
+    Serial.println(but2Count);
+    
+    
+ } 
+ 
+void butSet()   //  check the status of our buttons and act accordingly
+{  
+      int but1Sensor= digitalRead(but1Pin);       // local sensor variable
+      int but2Sensor= digitalRead(but2Pin);       // local sensor variable
+
+      if (but1Sensor != lastbut1Sensor)           // Has the button changed since last we looked?
+      {
+        if (but1Sensor == HIGH)                   // is the button HIGH?
+        {
+          but1Count++;                            // count it if it's HIGH
+        }
+        lastbut1Sensor=but1Sensor;                // tell the world we just got HIGH
+      }
+      if (but1Count >= 2)                         // check to see if the count is too high
+      {
+        but1Count=0;                              // and set back to zero if it is
+      }
+       if (but2Sensor != lastbut2Sensor)          // has the button changed since last we looked?
+      {
+        if (but2Sensor == HIGH)                   // is it HIGH?
+        {
+          but2Count++;                            // count it if it's HIGH
+        }
+        lastbut2Sensor=but2Sensor;                // tell the world we just got HIGH
+      }
+      if (but2Count >=2)                          // check to see if the count is too high
+      {
+        but2Count=0;                              // and set back to zero if it is
+      }
+}
+
+int getSpeed(int loopSpeed) // Get the speed to set the servo at based on but2Count
+{
+   int controlValue = analogRead(ControlPin);          // read from the control pin                    
+   switch (but2Count)                                  // our count can be zero or 1
+   {                                                    
+     case 0:                                           // if it's zero rotate clockwise
+      loopSpeed=map(controlValue, 0, 1023, 92, 180);  // continuous rotation at a speed between 90(stopped) and 180(max)
+      break;
+     case 1:                                           // if it's one rotate anticlockwise
+      loopSpeed=map(controlValue, 0, 1023, 92, 0);    // continuous rotation at a speed between 90(stopped) and 0(max)
+     break;                                      
+   }
+   return loopSpeed;                                  // return the proper speed for the proper direction
+}     
+    
+
+  
